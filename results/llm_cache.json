@@ -1,0 +1,20 @@
+{
+ "63911f13c59c37ef7ddd833c77e3162f8370cbaadbf6ab022b283177b76f7f79": {
+  "text": "{\"model\": \"snaive\", \"lag\": 24}",
+  "model_returned": "llama31-8k",
+  "usage": {
+   "prompt_tokens": 32,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "completion_tokens": 15,
+   "total_tokens": 47
+  },
+  "seconds": 14.35,
+  "backend": "openai_compat",
+  "model": "llama31-8k",
+  "temperature": 0.7,
+  "tag": "",
+  "time": "2026-11-14 16:30:56"
+ }
+}
