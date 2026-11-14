@@ -1,0 +1,5 @@
+,validation,validation,test,test
+,MAE_F,MAE_F_gio_xau_nhat,MAE_F,MAE_F_gio_xau_nhat
+regression,3.78,5.43,3.81,5.53
+persistence,5.72,6.36,5.82,6.64
+climatology,6.96,7.82,6.4,6.83
