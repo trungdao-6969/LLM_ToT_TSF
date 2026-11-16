@@ -16,5 +16,77 @@
   "temperature": 0.7,
   "tag": "",
   "time": "2026-11-14 16:30:56"
+ },
+ "9d2d11226eb0e3ae34b6ee248ba8d8238b93e5ad416ffcbdc332b4660cb73d3f": {
+  "text": "{\n  \"thoughts\": [\n    {\n      \"hypothesis\": {\n        \"category\": \"stable_seasonal\",\n        \"statement\": \"The series has a stable daily profile and weekly seasonality.\",\n        \"evidence\": [\"profile_corr_last2weeks\", \"level_28d_vs_lastyear\"]\n      },\n      \"config\": {\n        \"model\": \"mstl_ets\",\n        \"window_weeks\": 8\n      }\n    },\n    {\n      \"hypothesis\": {\n        \"category\": \"level_shift\",\n        \"statement\": \"The series has experienced a recent level shift, and we need to adapt to it.\",\n        \"evidence\": [\"naive_lag24_mape_14d_pct\", \"level_7d_vs_365d\"]\n      },\n      \"config\": {\n        \"model\": \"mlr\",\n        \"train_years\": 2,\n        \"recent_bias\": true\n      }\n    },\n    {\n      \"hypothesis\": {\n        \"category\": \"temp_sensitive\",\n        \"statement\": \"The series is sensitive to temperature, and we need to account for it.\",\n        \"evidence\": [\"corr_load_temp_28d\", \"temp_anomaly_7d_F\"]\n      },\n      \"config\": {\n        \"model\": \"mlr\",\n        \"train_years\": 2,\n        \"poly\": 2,\n        \"month_temp\": true\n      }\n    }\n  ]\n}",
+  "model_returned": "llama31-8k",
+  "usage": {
+   "prompt_tokens": 1321,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "completion_tokens": 299,
+   "total_tokens": 1620
+  },
+  "seconds": 163.4,
+  "backend": "openai_compat",
+  "model": "llama31-8k",
+  "temperature": 0.7,
+  "tag": "z10_2008-01-10|d1||try1",
+  "time": "2026-11-16 13:34:17"
+ },
+ "68a29c0eb9f7ddc505cf9ff1c0e349b540b74ceb4427791bbe04627c320960d0": {
+  "text": "{\n  \"scoring_window\": \"28d\",\n  \"thoughts\": [\n    {\n      \"hypothesis\": {\n        \"category\": \"trend_change\",\n        \"statement\": \"The series is experiencing a rapid increase in load, suggesting a trend change.\",\n        \"evidence\": [\"level_7d_vs_365d\", \"level_7d_vs_prev28d\"]\n      },\n      \"config\": {\n        \"model\": \"mlr\",\n        \"train_years\": null,\n        \"poly\": 2,\n        \"month_temp\": true,\n        \"holiday\": true,\n        \"recent_bias\": true\n      }\n    },\n    {\n      \"hypothesis\": {\n        \"category\": \"level_shift\",\n        \"statement\": \"The series has recently experienced a significant level shift, and we should account for it.\",\n        \"evidence\": [\"naive_lag24_mape_14d_pct\"]\n      },\n      \"config\": {\n        \"model\": \"lgbm\",\n        \"num_leaves\": 31,\n        \"target\": \"raw\",\n        \"train_years\": 2,\n        \"n_estimators\": 400,\n        \"lags\": \"short\"\n      }\n    },\n    {\n      \"hypothesis\": {\n        \"category\": \"calendar_anomaly\",\n        \"statement\": \"The target day is not a holiday, but the series tends to behave differently on Thursdays.\",\n        \"evidence\": [\"target_day_of_week\"]\n      },\n      \"config\": {\n        \"model\": \"mstl_ets\",\n        \"window_weeks\": 8\n      }\n    }\n  ]\n}",
+  "model_returned": "llama31-8k",
+  "usage": {
+   "prompt_tokens": 1427,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "completion_tokens": 337,
+   "total_tokens": 1764
+  },
+  "seconds": 181.75,
+  "backend": "openai_compat",
+  "model": "llama31-8k",
+  "temperature": 0.7,
+  "tag": "10_2008-01-10|d1||try1",
+  "time": "2026-11-16 13:50:58"
+ },
+ "a42d3a658cee641e11a8007203421bbc6c00e8cbf1fec502e0934f8f89b75b30": {
+  "text": "{\n  \"thoughts\": [\n    {\n      \"config\": {\"model\": \"mlr\", \"train_years\": 1, \"poly\": 2, \"month_temp\": true, \"holiday\": true, \"recent_bias\": true},\n      \"change_from_parent\": \"Reduced training years to 1, as the series has been stable for a few years.\"\n    },\n    {\n      \"config\": {\"model\": \"mlr\", \"train_years\": null, \"poly\": 3, \"month_temp\": true, \"holiday\": true, \"recent_bias\": true},\n      \"change_from_parent\": \"Increased the degree of the temperature polynomial to 3, as the temperature effect is strongly curved.\"\n    },\n    {\n      \"config\": {\"model\": \"mlr\", \"train_years\": null, \"poly\": 2, \"month_temp\": false, \"holiday\": true, \"recent_bias\": true},\n      \"change_from_parent\": \"Removed the monthly temperature effect, as the correlation between load and temperature is relatively low.\"\n    }\n  ]\n}",
+  "model_returned": "llama31-8k",
+  "usage": {
+   "prompt_tokens": 1636,
+   "prompt_tokens_details": {
+    "cached_tokens": 1281
+   },
+   "completion_tokens": 220,
+   "total_tokens": 1856
+  },
+  "seconds": 79.53,
+  "backend": "openai_compat",
+  "model": "llama31-8k",
+  "temperature": 0.7,
+  "tag": "10_2008-01-10|d2|t1||try1",
+  "time": "2026-11-16 13:53:50"
+ },
+ "a276e5ebf00a2710059629803fa2f33ee40ca63cf3ad2c60c189bc6bdc406132": {
+  "text": "{\n    \"thoughts\": [\n        {\n            \"config\": {\"model\": \"mstl_ets\", \"window_weeks\": 4},\n            \"change_from_parent\": \"Reduced window_weeks to 4, as the series has daily and weekly seasonality, but it's not as pronounced as in the parent configuration. This will allow the model to adapt faster to changes in the series.\"\n        },\n        {\n            \"config\": {\"model\": \"mstl_ets\", \"window_weeks\": 12},\n            \"change_from_parent\": \"Increased window_weeks to 12, as the series has a strong weekly seasonality that should be captured by the model. This will also help to reduce the impact of daily noise in the series.\"\n        },\n        {\n            \"config\": {\"model\": \"mstl_ets\", \"window_weeks\": 8, \"holiday\": true},\n            \"change_from_parent\": \"Added the holiday feature to the model, as the series tends to behave differently on Thursdays, which might be due to holidays. This will allow the model to capture the holiday effect in the series.\"\n        }\n    ]\n}",
+  "model_returned": "llama31-8k",
+  "usage": {
+   "prompt_tokens": 1628,
+   "prompt_tokens_details": {
+    "cached_tokens": 1497
+   },
+   "completion_tokens": 240,
+   "total_tokens": 1868
+  },
+  "seconds": 71.23,
+  "backend": "openai_compat",
+  "model": "llama31-8k",
+  "temperature": 0.7,
+  "tag": "10_2008-01-10|d2|t3||try1",
+  "time": "2026-11-16 13:56:38"
  }
 }

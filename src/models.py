@@ -12,7 +12,9 @@ Cách xử lý nhiệt độ theo mức (temp_level):
 Ở L1, information_set đã xóa T tương lai, nên nếu mô hình lỡ dùng T(t) thì sẽ ra NaN -> lỗi ngay.
 
 Một cấu hình là một dict, ví dụ {"model": "mlr", "train_years": 2, "poly": 3, "month_temp": True}.
-LLM (ở GĐ6) và random search (ở GĐ5) chỉ được chọn cấu hình trong SEARCH_SPACE.
+Hai thực đơn:
+    SEARCH_SPACE    : 24 cấu hình, dùng ở GĐ5 (bộ chọn thống kê, random search).
+    SEARCH_SPACE_V2 : 186 cấu hình, dùng ở GĐ6 (LLM và random search cùng ngân sách chỉ được chọn trong này).
 """
 import itertools
 import warnings
@@ -64,12 +66,19 @@ class SeasonalNaive:
 # ----------------------------------------------------------------------------
 # 2. MLR của Tao Hong ("vanilla benchmark")
 #    Load = b0 + b1*Trend + M + W*H + H*(T,T²,T³) + M*(T,T²,T³)
+#    Hai núm thêm ở GĐ6 (mặc định tắt -> giống hệt bản GĐ4/GĐ5):
+#      holiday=True    : thêm 24 biến giả "ngày lễ × giờ" (hình dạng tải ngày lễ khác ngày thường)
+#      recent_bias=True: cộng sai số trung bình của ngày D-1 vào dự báo ngày D
+#                        (sửa nhanh khi mức tải vừa lệch khỏi những gì mô hình đã học)
 # ----------------------------------------------------------------------------
 class MLRTaoHong:
-    def __init__(self, train_years=None, poly=3, month_temp=True, temp_level="L1"):
+    def __init__(self, train_years=None, poly=3, month_temp=True, holiday=False,
+                 recent_bias=False, temp_level="L1"):
         self.train_years = train_years
         self.poly = poly
         self.month_temp = month_temp
+        self.holiday = holiday
+        self.recent_bias = recent_bias
         self.temp_level = temp_level
         self.lookback_days = 3
         self.beta = None
@@ -91,6 +100,8 @@ class MLRTaoHong:
             cols.append(H * (T ** p)[:, None])
             if self.month_temp:
                 cols.append(M * (T ** p)[:, None])
+        if self.holiday:
+            cols.append(H * frame["is_holiday"].values[:, None])
         return np.column_stack(cols)
 
     def fit(self, train):
@@ -101,8 +112,13 @@ class MLRTaoHong:
         self.beta, *_ = np.linalg.lstsq(X[ok], y[ok], rcond=None)
 
     def predict(self, info, origin):
-        X = self.design(info)[-HORIZON:]
-        return X @ self.beta
+        X = self.design(info)
+        pred = X[-HORIZON:] @ self.beta
+        if self.recent_bias:
+            # sai số của mô hình trên 24 giờ ngày D-1 (đã quan sát được tại origin)
+            resid = info["load"].values[-2 * HORIZON:-HORIZON] - X[-2 * HORIZON:-HORIZON] @ self.beta
+            pred = pred + np.nanmean(resid)
+        return pred
 
 
 # ----------------------------------------------------------------------------
@@ -181,20 +197,24 @@ class SARIMAXModel:
 #    target="ratio": học tỉ số phụ tải / phụ tải TB ngày D-1 (giúp thích nghi khi mức tải đổi)
 # ----------------------------------------------------------------------------
 class LightGBMModel:
+    LAGS = {"full": (24, 48, 72, 168, 336),   # đến 2 tuần trước
+            "short": (24, 48, 72)}            # chỉ 3 ngày gần nhất
+
     def __init__(self, num_leaves=31, target="ratio", train_years=None, n_estimators=400,
-                 learning_rate=0.05, temp_level="L1", seed=0):
+                 lags="full", learning_rate=0.05, temp_level="L1", seed=0):
         self.params = dict(num_leaves=num_leaves, n_estimators=n_estimators,
                            learning_rate=learning_rate, min_child_samples=20,
                            subsample=0.8, subsample_freq=1, colsample_bytree=0.8,
                            random_state=seed, verbose=-1, n_jobs=2)
         self.target = target
         self.train_years = train_years
+        self.lags = self.LAGS[lags]
         self.temp_level = temp_level
         self.lookback_days = 20
 
     def features(self, frame):
         F = frame[["hour", "dayofweek", "month", "dayofyear", "is_holiday"]].copy()
-        for k in (24, 48, 72, 168, 336):
+        for k in self.lags:
             F[f"lag{k}"] = frame["load"].shift(k)
         F["load_mean_D1"] = daily_stat_prev(frame, "load", "mean")
         F["load_max_D1"] = daily_stat_prev(frame, "load", "max")
@@ -244,9 +264,17 @@ def build_model(cfg, temp_level="L1"):
     return REGISTRY[cfg["model"]](temp_level=temp_level, **params)
 
 
+# Núm thêm ở GĐ6 và giá trị mặc định của chúng. Khi một cấu hình để núm mới ở giá trị mặc định
+# thì config_id bỏ núm đó đi -> trùng tên với cấu hình GĐ5 -> dùng lại dự báo đã có trong cache.
+NEW_DEFAULTS = {"mlr": {"holiday": False, "recent_bias": False},
+                "lgbm": {"n_estimators": 400, "lags": "full"}}
+
+
 def config_id(cfg):
-    """Tên ngắn, dùng làm tên file cache. vd mlr_train_years-2_poly-3_month_temp-True"""
-    parts = [cfg["model"]] + [f"{k}-{v}" for k, v in sorted(cfg.items()) if k != "model"]
+    """Tên ngắn, dùng làm tên file cache. vd mlr_month_temp-True_poly-3_train_years-2"""
+    skip = NEW_DEFAULTS.get(cfg["model"], {})
+    parts = [cfg["model"]] + [f"{k}-{v}" for k, v in sorted(cfg.items())
+                              if k != "model" and not (k in skip and skip[k] == v)]
     return "_".join(parts)
 
 
@@ -267,6 +295,18 @@ SEARCH_SPACE = {
     "mlr": {"train_years": [1, 2, None], "poly": [2, 3], "month_temp": [True, False]},
     "mstl_ets": {"window_weeks": [4, 8]},
     "lgbm": {"num_leaves": [31, 63], "target": ["raw", "ratio"], "train_years": [2, None]},
+}
+
+
+# Thực đơn mở rộng cho GĐ6: 2 + 72 + 4 + 108 = 186 cấu hình (chứa trọn 24 cấu hình cũ).
+# Mỗi núm ứng với một giả thuyết mà LLM có thể suy luận từ dữ liệu (xem bảng trong checklist GĐ6).
+SEARCH_SPACE_V2 = {
+    "snaive": {"lag": [24, 168]},
+    "mlr": {"train_years": [1, 2, None], "poly": [1, 2, 3], "month_temp": [True, False],
+            "holiday": [False, True], "recent_bias": [False, True]},
+    "mstl_ets": {"window_weeks": [3, 4, 8, 12]},
+    "lgbm": {"num_leaves": [15, 31, 63], "target": ["raw", "ratio"], "train_years": [1, 2, None],
+             "n_estimators": [200, 400, 800], "lags": ["short", "full"]},
 }
 
 

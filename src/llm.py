@@ -8,7 +8,7 @@ Mọi thiết lập nằm trong file .env ở gốc repo (không đưa lên GitH
     LLM_MODEL     = tên mô hình, vd llama31-8k hoặc deepseek-flash
 
 Hai backend:
-- "mock": LLM giả, trả về 3 cấu hình ngẫu nhiên trong thực đơn. Chỉ để kiểm tra pipeline,
+- "mock": LLM giả, trả về 3 cấu hình ngẫu nhiên trong thực đơn SEARCH_SPACE_V2. Chỉ để kiểm tra pipeline,
   kết quả KHÔNG có ý nghĩa nghiên cứu (bản chất là random search).
 - "openai_compat": gọi endpoint /chat/completions theo chuẩn OpenAI. Ollama và DeepSeek
   đều hỗ trợ chuẩn này -> đổi LLM chỉ cần sửa .env.
@@ -77,9 +77,9 @@ def _cache_key(s, system, prompt, temperature, max_tokens, tag):
 # ----------------------------------------------------------------------------
 def _mock_reply(key):
     """LLM giả: 3 cấu hình ngẫu nhiên trong thực đơn (seed theo key -> lần nào cũng như nhau)."""
-    from src.models import all_configs
+    from src.models import all_configs, SEARCH_SPACE_V2
     rng = random.Random(key)
-    configs = rng.sample(all_configs(), 3)
+    configs = rng.sample(all_configs(SEARCH_SPACE_V2), 3)
     thoughts = [{"hypothesis": {"category": "mock", "statement": "cấu hình ngẫu nhiên", "evidence": []},
                  "config": c} for c in configs]
     return json.dumps({"thoughts": thoughts}, ensure_ascii=False), {"model": "mock"}
